@@ -1,4 +1,4 @@
-package com.inspien;
+package com.inspien.common.util;
 
 import java.nio.charset.Charset;
 import java.util.Base64;
