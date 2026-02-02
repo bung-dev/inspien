@@ -28,9 +28,29 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final PlatformTransactionManager txManager;
+    private final OrderParserXML orderParserXML;
+    private final OrderRequestValidator validator;
+    private final OrderMapper mapper;
     private final OrderIdGenerator idGenerator;
 
     private static final int MAX_RETRY = 3;
+
+    @Transactional
+    public CreateOrderResult createOrderSync(String base64Xml) {
+
+        final OrderRequestXML request;
+        try {
+            request = orderParserXML.parse(base64Xml);
+        } catch (Exception e) {
+            throw ErrorCode.XML_PARSE_ERROR.exception();
+        }
+
+        validator.validate(request);
+
+        List<Order> orders = mapper.flatten(request);
+
+        return saveOrders(orders);
+    }
 
     private CreateOrderResult saveOrders(List<Order> orders) {
         if (orders == null || orders.isEmpty()) {
