@@ -1,4 +1,4 @@
-﻿package com.inspien.order.service;
+package com.inspien.order.service;
 
 import com.inspien.receiver.jdbc.BatchResult;
 import com.inspien.receiver.sftp.FileWriter;
@@ -12,7 +12,6 @@ import com.inspien.order.domain.Order;
 import com.inspien.receiver.jdbc.OrderRepository;
 import com.inspien.sender.dto.CreateOrderResult;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -37,9 +36,7 @@ public class OrderService {
     private final SftpUploader sftpUploader;
 
     private final int MAX_RETRY = 5;
-
-    @Value("${my.name}")
-    private String name;
+    private  String NAME = "이중호";
 
     @Transactional
     public CreateOrderResult createOrderSync(String base64Xml) {
@@ -55,15 +52,7 @@ public class OrderService {
 
         List<Order> orders = mapper.flatten(request);
 
-        CreateOrderResult result = saveOrders(orders);
-
-        Path file = fileWriter.write(orders, name);
-        try {
-            sftpUploader.upload(file);
-        } catch (RuntimeException e) {
-            throw ErrorCode.SFTP_SEND_FAIL.exception();
-        }
-        return result;
+        return saveOrders(orders);
     }
 
     private CreateOrderResult saveOrders(List<Order> orders) {
@@ -74,11 +63,20 @@ public class OrderService {
         TransactionTemplate requiresNewTx = requiresNewTemplate();
 
         for (int attempt = 1; attempt <= MAX_RETRY; attempt++) {
+            final int attemptNum = attempt;
             assignOrderId(orders);
 
             try {
-                BatchResult summary = executeBatchInsert(requiresNewTx, orders);
-                return CreateOrderResult.ok(summary, attempt);
+                return requiresNewTx.execute(status -> {
+                    BatchResult summary = executeBatchInsert(orders);
+                    Path file = fileWriter.write(orders, NAME);
+                    try {
+                        sftpUploader.upload(file);
+                    } catch (RuntimeException e) {
+                        throw ErrorCode.SFTP_SEND_FAIL.exception();
+                    }
+                    return CreateOrderResult.ok(summary, attemptNum);
+                });
 
             } catch (DuplicateKeyException e) {
                 if (attempt == MAX_RETRY) {
@@ -95,11 +93,9 @@ public class OrderService {
         return tx;
     }
 
-    private BatchResult executeBatchInsert(TransactionTemplate tx, List<Order> orders) {
-        return tx.execute(status -> {
-            int[] result = orderRepository.batchInsert(orders);
-            return BatchResult.from(result, orders.size());
-        });
+    private BatchResult executeBatchInsert(List<Order> orders) {
+        int[] result = orderRepository.batchInsert(orders);
+        return BatchResult.from(result, orders.size());
     }
 
     private void assignOrderId(List<Order> orders) {
@@ -108,4 +104,3 @@ public class OrderService {
         }
     }
 }
-
