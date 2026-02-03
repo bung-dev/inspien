@@ -204,6 +204,6 @@ gradle-app.setting
 application.properties
 application-*.properties
 
-./logs/
+logs/
 
 # End of https://www.toptal.com/developers/gitignore/api/intellij+all,gradle,java,macos,windows
