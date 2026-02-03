@@ -7,14 +7,13 @@ import java.security.SecureRandom;
 
 
 @Component
-public class OrderIdGenerator {
+public class IdGenerator {
 
     private static final SecureRandom RND = new SecureRandom();
-    public String nextOrderId() {
 
+    public String generate() {
         char letter = (char) ('A' + RND.nextInt(26));
         int num = RND.nextInt(1000);
         return letter + String.format("%03d", num);
     }
-
 }
