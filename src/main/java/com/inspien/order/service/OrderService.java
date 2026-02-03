@@ -1,4 +1,4 @@
-package com.inspien.order.service;
+﻿package com.inspien.order.service;
 
 import com.inspien.receiver.jdbc.BatchResult;
 import com.inspien.receiver.sftp.FileWriter;
@@ -12,6 +12,7 @@ import com.inspien.order.domain.Order;
 import com.inspien.receiver.jdbc.OrderRepository;
 import com.inspien.sender.dto.CreateOrderResult;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -31,9 +32,14 @@ public class OrderService {
     private final OrderParserXML orderParserXML;
     private final OrderRequestValidator validator;
     private final OrderMapper mapper;
-    private final OrderIdGenerator idGenerator;
+    private final IdGenerator idGenerator;
+    private final FileWriter fileWriter;
+    private final SftpUploader sftpUploader;
 
-    private static final int MAX_RETRY = 3;
+    private final int MAX_RETRY = 5;
+
+    @Value("${my.name}")
+    private String name;
 
     @Transactional
     public CreateOrderResult createOrderSync(String base64Xml) {
@@ -49,7 +55,15 @@ public class OrderService {
 
         List<Order> orders = mapper.flatten(request);
 
-        return saveOrders(orders);
+        CreateOrderResult result = saveOrders(orders);
+
+        Path file = fileWriter.write(orders, name);
+        try {
+            sftpUploader.upload(file);
+        } catch (RuntimeException e) {
+            throw ErrorCode.SFTP_SEND_FAIL.exception();
+        }
+        return result;
     }
 
     private CreateOrderResult saveOrders(List<Order> orders) {
@@ -90,7 +104,8 @@ public class OrderService {
 
     private void assignOrderId(List<Order> orders) {
         for (Order o : orders) {
-            o.setOrderId(idGenerator.nextOrderId());
+            o.setOrderId(idGenerator.generate());
         }
     }
 }
+
