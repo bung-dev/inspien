@@ -4,6 +4,10 @@
 주문 생성 API를 통해 주문을 적재하고, 회계용 파일을 생성해 SFTP로 전송하며,
 5분 주기 배치로 운송사 DB로 전달합니다.
 
+## 아키텍처
+![아키텍처](https://github.com/user-attachments/assets/434f4ccd-de4d-4ac3-ba38-d342dfe9674a)
+
+
 ## 주요 기능
 - 주문 API 수신 (Base64 + EUC-KR XML)
 - XML 파싱/검증/매핑 후 주문 DB 적재
