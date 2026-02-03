@@ -2,6 +2,7 @@ package com.inspien.receiver.sftp;
 
 import com.inspien.common.exception.ErrorCode;
 import com.inspien.order.domain.Order;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -11,6 +12,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.List;
 
+@Slf4j
 @Component
 public class FileWriter {
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
@@ -42,12 +44,16 @@ public class FileWriter {
                         .append(o.getPrice())
                         .append("\n");
             }
+            Path written = Files.writeString(file, sb.toString(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            log.info("[FILE] created file={} rows={}", written.getFileName(), sorted.size());
 
-            return Files.writeString(file, sb.toString(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            return written;
 
         } catch (IOException e) {
+            log.error("[FILE] write_fail reason=io_error participantName={}", participantName, e);
             throw ErrorCode.FILE_WRITE_FAIL.exception();
         } catch (InvalidPathException e){
+            log.error("[FILE] write_fail reason=invalid_path participantName={}", participantName, e);
             throw ErrorCode.INVALID_PATH.exception();
         }
     }

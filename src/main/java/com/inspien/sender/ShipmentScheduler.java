@@ -2,10 +2,15 @@ package com.inspien.sender;
 
 import com.inspien.order.service.ShipmentService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.util.UUID;
+
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class ShipmentScheduler {
@@ -16,6 +21,13 @@ public class ShipmentScheduler {
 
     @Scheduled(fixedDelay = 5 * 60 * 1000)
     public void run() {
-        shipmentService.run(applicationKey);
+        String traceId = UUID.randomUUID().toString();
+        MDC.put("traceId", traceId);
+        try {
+            log.info("[BATCH:SCHEDULER] start");
+            shipmentService.run(applicationKey);
+        } finally {
+            MDC.remove("traceId");
+        }
     }
 }

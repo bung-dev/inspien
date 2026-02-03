@@ -25,7 +25,7 @@ public class ShipmentService {
     public void run(String applicantKey) {
         List<PendingOrderRow> pending = orderRepository.findPendingForShipment(applicantKey);
         if (pending.isEmpty()) {
-            log.info("[BATCH] pending=0 applicantKey={}", applicantKey);
+            log.info("[BATCH] no_pending");
             return;
         }
 
