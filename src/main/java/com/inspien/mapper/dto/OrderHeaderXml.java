@@ -22,4 +22,8 @@ public class OrderHeaderXml {
     @NotBlank
     @JacksonXmlProperty(localName = "STATUS")
     private String status;
+
+    public void setStatus(String status) {
+        this.status = status == null ? null : status.trim();
+    }
 }
