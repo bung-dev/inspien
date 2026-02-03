@@ -5,10 +5,7 @@ import com.inspien.order.domain.Order;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
+import java.nio.file.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
@@ -50,6 +47,8 @@ public class FileWriter {
 
         } catch (IOException e) {
             throw ErrorCode.FILE_WRITE_FAIL.exception();
+        } catch (InvalidPathException e){
+            throw ErrorCode.INVALID_PATH.exception();
         }
     }
 }
