@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 public class OrderMapper {
 
     @Value("${application_key:}")
-    String applicationKey;
+    private String applicationKey;
 
     public List<Order> flatten(OrderRequestXML req) {
         if (req == null) {
