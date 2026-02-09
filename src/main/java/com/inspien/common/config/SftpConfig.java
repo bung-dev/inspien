@@ -1,8 +1,12 @@
 package com.inspien.common.config;
 
+
+import org.apache.sshd.sftp.client.SftpClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.integration.file.remote.session.CachingSessionFactory;
+import org.springframework.integration.file.remote.session.SessionFactory;
 import org.springframework.integration.sftp.session.DefaultSftpSessionFactory;
 import org.springframework.integration.sftp.session.SftpRemoteFileTemplate;
 
@@ -23,14 +27,14 @@ public class SftpConfig {
 
 
     @Bean
-    public DefaultSftpSessionFactory sftpSessionFactory() {
+    public SessionFactory<SftpClient.DirEntry> sftpSessionFactory() {
         DefaultSftpSessionFactory sftpSessionFactory = new DefaultSftpSessionFactory();
         sftpSessionFactory.setUser(username);
         sftpSessionFactory.setPassword(password);
         sftpSessionFactory.setHost(host);
         sftpSessionFactory.setPort(port);
         sftpSessionFactory.setAllowUnknownKeys(true);
-        return sftpSessionFactory;
+        return new CachingSessionFactory<>(sftpSessionFactory);
     }
 
     @Bean
