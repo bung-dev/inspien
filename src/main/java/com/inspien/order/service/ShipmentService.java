@@ -31,7 +31,7 @@ public class ShipmentService {
 
         List<ShipmentRow> shipmentRows = pending.stream()
                 .map(p -> new ShipmentRow(
-                        idGenerator.generate(),
+                        p.orderId(),
                         p.orderId(),
                         p.itemId(),
                         p.applicantKey(),
