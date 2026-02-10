@@ -19,7 +19,7 @@ public class ShipmentScheduler {
     @Value("${application.key}")
     private String applicationKey;
 
-    @Scheduled(fixedDelay = 5 * 60 * 1000)
+    @Scheduled(fixedDelayString = "${shipment.scheduler.delay}")
     public void run() {
         String traceId = UUID.randomUUID().toString();
         MDC.put("traceId", traceId);
