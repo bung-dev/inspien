@@ -23,10 +23,11 @@ public class OrderParserXML {
         StringBuilder items = new StringBuilder();
 
         for (String block : xml.split("(?=<HEADER>|<ITEM>)")) {
-            if (block.startsWith("<HEADER>")) {
-                headers.append(block);
-            } else if (block.startsWith("<ITEM>")) {
-                items.append(block);
+            String trimmedBlock = block.trim();
+            if (trimmedBlock.startsWith("<HEADER>")) {
+                headers.append(trimmedBlock);
+            } else if (trimmedBlock.startsWith("<ITEM>")) {
+                items.append(trimmedBlock);
             }
         }
         return "<ORDER_REQUEST>" + headers + items + "</ORDER_REQUEST>";
