@@ -1,5 +1,6 @@
 package com.inspien.order.service;
 
+import com.inspien.mapper.dto.FlattenResult;
 import com.inspien.receiver.jdbc.BatchResult;
 import com.inspien.receiver.sftp.FileWriter;
 import com.inspien.receiver.sftp.SftpUploader;
@@ -65,15 +66,18 @@ public class OrderService {
             validator.validate(request);
             log.info("[ORDER] validate_ok");
 
-            List<Order> orders = mapper.flatten(request);
-            log.info("[ORDER] flatten_ok orders={}", orders.size());
+            FlattenResult flattenResult = mapper.flatten(request);
+            List<Order> orders = flattenResult.orders();
+            int skippedCount = flattenResult.skippedCount();
+            log.info("[ORDER] flatten_ok orders={} skipped={}", orders.size(), skippedCount);
 
-            CreateOrderResult result = saveOrders(orders);
+            CreateOrderResult result = saveOrders(orders, skippedCount);
 
-            log.info("[ORDER] done success={} message={} orderCount={} retryCount={}",
+            log.info("[ORDER] done success={} message={} orderCount={} skippedCount={} retryCount={}",
                     result.success(),
                     result.message(),
                     result.orderCount(),
+                    result.skippedCount(),
                     result.retryCount()
             );
 
@@ -87,7 +91,7 @@ public class OrderService {
         }
     }
 
-    private CreateOrderResult saveOrders(List<Order> orders) {
+    private CreateOrderResult saveOrders(List<Order> orders, int skippedCount) {
         if (orders == null || orders.isEmpty()) {
             throw ErrorCode.VALIDATION_ERROR.exception();
         }
@@ -100,12 +104,12 @@ public class OrderService {
 
             try {
                 return requiresNewTx.execute(status -> {
-                    BatchResult batchResult = executeBatchInsert(orders);
+                    BatchResult summary = executeBatchInsert(orders);
                     log.info("[ORDER:DB] insert_done attempt={} total={} success={} fail={}",
                             attemptNum,
-                            batchResult.totalCount(),
-                            batchResult.successCount(),
-                            batchResult.failCount());
+                            summary.totalCount(),
+                            summary.successCount(),
+                            summary.failCount());
                     Path file = fileWriter.write(orders, participantName);
                     log.info("[ORDER:FILE] created file={}", file.getFileName());
                     try {
@@ -121,7 +125,7 @@ public class OrderService {
                         }
                         throw ErrorCode.SFTP_SEND_FAIL.exception();
                     }
-                    return CreateOrderResult.ok(batchResult.successCount(), attemptNum);
+                    return CreateOrderResult.ok(summary.successCount(), skippedCount, attemptNum);
                 });
 
             } catch (DuplicateKeyException e) {

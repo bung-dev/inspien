@@ -1,5 +1,6 @@
 package com.inspien.mapper;
 
+import com.inspien.mapper.dto.FlattenResult;
 import com.inspien.mapper.dto.OrderHeaderXml;
 import com.inspien.mapper.dto.OrderItemXml;
 import com.inspien.mapper.dto.OrderRequestXML;
@@ -19,40 +20,45 @@ public class OrderMapper {
     @Value("${application.key:}")
     private String applicationKey;
 
-    public List<Order> flatten(OrderRequestXML req) {
+    public FlattenResult flatten(OrderRequestXML req) {
         if (req == null) {
-            return List.of();
+            return new FlattenResult(List.of(), 0);
         }
 
         List<OrderHeaderXml> headers = req.getHeaders();
         List<OrderItemXml> items = req.getItems();
 
         Map<String, OrderHeaderXml> headerMap = headers.stream()
-                .filter(h -> !h.getUserId().isBlank())
+                .filter(h -> h.getUserId() != null && !h.getUserId().isBlank())
                 .collect(Collectors.toMap(
-                        OrderHeaderXml::getUserId,
+                        h -> h.getUserId().trim(),
                         Function.identity(),
                         (a, b) -> a
                 ));
 
 
-        List<Order> result = new ArrayList<>(items.size());
+        List<Order> orders = new ArrayList<>(items.size());
+        int skippedCount = 0;
 
         for (OrderItemXml item : items) {
             String userId = item.getUserId();
 
-            if (userId.isBlank()) {
+            if (userId == null || userId.isBlank()) {
+                skippedCount++;
                 continue;
             }
 
-            OrderHeaderXml header = headerMap.get(userId);
+            String trimmedUserId = userId.trim();
+            OrderHeaderXml header = headerMap.get(trimmedUserId);
             if (header == null) {
+                log.warn("[MAPPER] header_not_found userId={}", trimmedUserId);
+                skippedCount++;
                 continue;
             }
 
-            result.add(Order.builder()
-                    .userId(userId)
-                    .itemId(item.getItemId())
+            orders.add(Order.builder()
+                    .userId(trimmedUserId)
+                    .itemId(item.getItemId() != null ? item.getItemId().trim() : null)
                     .itemName(item.getItemName())
                     .price(item.getPrice())
                     .name(header.getName())
@@ -61,7 +67,7 @@ public class OrderMapper {
                     .applicantKey(applicationKey)
                     .build());
         }
-        return result;
+        return new FlattenResult(orders, skippedCount);
     }
 
 }
