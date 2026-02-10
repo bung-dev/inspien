@@ -14,6 +14,7 @@ import com.inspien.sender.dto.CreateOrderResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -39,10 +40,14 @@ public class OrderService {
     private final FileWriter fileWriter;
     private final SftpUploader sftpUploader;
 
-    private final int MAX_RETRY = 5;
-    private  String NAME = "이중호";
+    @Value("${order.max-retry:50}")
+    private int maxRetry;
+
+    @Value("${order.participant-name}")
+    private String participantName;
 
     public CreateOrderResult createOrderSync(String base64Xml) {
+        long startTime = System.currentTimeMillis();
         String traceId = UUID.randomUUID().toString();
         MDC.put("traceId", traceId);
         try {
@@ -65,17 +70,17 @@ public class OrderService {
 
             CreateOrderResult result = saveOrders(orders);
 
-            log.info("[ORDER] done success={} code={} attempt={} requestedRows={} successCount={} successKnownRows={} successUnknown={} zeroOrOther={}",
+            log.info("[ORDER] done success={} message={} orderCount={} retryCount={}",
                     result.success(),
-                    result.code(),
-                    result.attempt(),
-                    result.batch().requestedRows(),
-                    result.batch().successCount(),
-                    result.batch().successKnownRows(),
-                    result.batch().successUnknown(),
-                    result.batch().zeroOrOther()
+                    result.message(),
+                    result.orderCount(),
+                    result.retryCount()
             );
 
+            long endTime = System.currentTimeMillis();
+            long durationTime = endTime - startTime;
+
+            log.info("[ORDER] durationTime={}",durationTime);
             return result;
         } finally {
             MDC.remove("traceId");
@@ -89,21 +94,19 @@ public class OrderService {
 
         TransactionTemplate requiresNewTx = requiresNewTemplate();
 
-        for (int attempt = 1; attempt <= MAX_RETRY; attempt++) {
+        for (int attempt = 1; attempt <= maxRetry; attempt++) {
             final int attemptNum = attempt;
             assignOrderId(orders);
 
             try {
                 return requiresNewTx.execute(status -> {
-                    BatchResult summary = executeBatchInsert(orders);
-                    log.info("[ORDER:DB] insert_done attempt={} requestedRows={} successCount={} successKnownRows={} successUnknown={} zeroOrOther={}",
+                    BatchResult batchResult = executeBatchInsert(orders);
+                    log.info("[ORDER:DB] insert_done attempt={} total={} success={} fail={}",
                             attemptNum,
-                            summary.requestedRows(),
-                            summary.successCount(),
-                            summary.successKnownRows(),
-                            summary.successUnknown(),
-                            summary.zeroOrOther());
-                    Path file = fileWriter.write(orders, NAME);
+                            batchResult.totalCount(),
+                            batchResult.successCount(),
+                            batchResult.failCount());
+                    Path file = fileWriter.write(orders, participantName);
                     log.info("[ORDER:FILE] created file={}", file.getFileName());
                     try {
                         sftpUploader.upload(file);
@@ -118,12 +121,12 @@ public class OrderService {
                         }
                         throw ErrorCode.SFTP_SEND_FAIL.exception();
                     }
-                    return CreateOrderResult.ok(summary, attemptNum);
+                    return CreateOrderResult.ok(batchResult.successCount(), attemptNum);
                 });
 
             } catch (DuplicateKeyException e) {
-                if (attempt == MAX_RETRY) {
-                    log.warn("[ORDER:DB] duplicate_key_retry attempt={}/{}", attempt, MAX_RETRY);
+                if (attempt == maxRetry) {
+                    log.warn("[ORDER:DB] duplicate_key_retry attempt={}/{}", attempt, maxRetry);
                     throw ErrorCode.DUPLICATE_KEY.exception();
                 }
             }
