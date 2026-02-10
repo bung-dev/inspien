@@ -3,6 +3,7 @@ package com.inspien.receiver.sftp;
 import com.inspien.common.exception.ErrorCode;
 import com.inspien.order.domain.Order;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -17,9 +18,12 @@ import java.util.List;
 public class FileWriter {
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
+    @Value("${file.out-dir}")
+    private String outDir;
+
     public Path write(List<Order> orders, String participantName) {
         try {
-            Path dir = Paths.get("./out");
+            Path dir = Paths.get(outDir);
             Files.createDirectories(dir);
 
             String filename = "INSPIEN_" + participantName + "_" + LocalDateTime.now().format(FMT) + ".txt";
