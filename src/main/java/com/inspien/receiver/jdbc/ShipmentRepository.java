@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.namedparam.SqlParameterSource;
+import org.springframework.jdbc.core.namedparam.SqlParameterSourceUtils;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -27,19 +28,8 @@ public class ShipmentRepository {
             return new int[0];
         }
 
-        SqlParameterSource[] params = rows.stream()
-                .map(this::toParam)
-                .toArray(SqlParameterSource[]::new);
+        SqlParameterSource[] params = SqlParameterSourceUtils.createBatch(rows);
 
         return template.batchUpdate(sql, params);
-    }
-
-    private SqlParameterSource toParam(ShipmentRow o) {
-        return new MapSqlParameterSource()
-                .addValue("shipmentId", o.shipmentId())
-                .addValue("orderId", o.orderId())
-                .addValue("itemId", o.itemId())
-                .addValue("applicantKey", o.applicantKey())
-                .addValue("address", o.address());
     }
 }
