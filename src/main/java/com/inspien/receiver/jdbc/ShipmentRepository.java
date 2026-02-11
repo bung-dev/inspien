@@ -21,8 +21,6 @@ public class ShipmentRepository {
                 (SHIPMENT_ID, ORDER_ID, ITEM_ID, APPLICANT_KEY, ADDRESS)
                 VALUES
                 (:shipmentId, :orderId, :itemId, :applicantKey, :address)
-                ON DUPLICATE KEY UPDATE
-                SHIPMENT_ID = SHIPMENT_ID
                 """;
 
         if (rows == null || rows.isEmpty()) {
