@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.namedparam.SqlParameterSource;
+import org.springframework.jdbc.core.namedparam.SqlParameterSourceUtils;
 import org.springframework.stereotype.Repository;
 
 import java.util.HashMap;
@@ -29,24 +30,9 @@ public class OrderRepository {
             return new int[0];
         }
 
-        SqlParameterSource[] params = orders.stream()
-                .map(this::toParam)
-                .toArray(SqlParameterSource[]::new);
+        SqlParameterSource[] params = SqlParameterSourceUtils.createBatch(orders);
 
         return template.batchUpdate(sql, params);
-    }
-
-    private SqlParameterSource toParam(Order o) {
-        return new MapSqlParameterSource()
-                .addValue("orderId", o.getOrderId())
-                .addValue("userId", o.getUserId())
-                .addValue("itemId", o.getItemId())
-                .addValue("applicantKey", o.getApplicantKey())
-                .addValue("name", o.getName())
-                .addValue("address", o.getAddress())
-                .addValue("itemName", o.getItemName())
-                .addValue("price", o.getPrice())
-                .addValue("status", o.getStatus());
     }
 
     public List<PendingOrderRow> findPendingForShipment(String applicantKey) {
