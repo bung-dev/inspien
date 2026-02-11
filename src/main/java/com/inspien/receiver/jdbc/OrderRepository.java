@@ -55,7 +55,8 @@ public class OrderRepository {
                 FROM ORDER_TB
                 WHERE APPLICANT_KEY = :applicantKey AND STATUS = 'N'
                 """;
-        Map<String, String> params = Map.of("applicantKey", applicantKey);
+        MapSqlParameterSource params = new MapSqlParameterSource()
+                .addValue("applicantKey", applicantKey);
         return template.query(sql,params,(rs, row) ->
                 new PendingOrderRow(
                         rs.getString("ORDER_ID"),
@@ -72,9 +73,9 @@ public class OrderRepository {
                 WHERE APPLICANT_KEY = :applicantKey AND ORDER_ID IN (:orderIds)
         """;
 
-        Map<String, Object> params = new HashMap<>();
-        params.put("applicantKey", applicantKey);
-        params.put("orderIds", orderIds);
+        MapSqlParameterSource params = new MapSqlParameterSource()
+                .addValue("applicantKey", applicantKey)
+                .addValue("orderIds", orderIds);
 
         return template.update(sql, params);
     }
